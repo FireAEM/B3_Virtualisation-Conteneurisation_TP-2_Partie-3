@@ -1,0 +1,17 @@
+from app import app, add
+
+def test_add():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+
+def test_home_endpoint():
+    client = app.test_client()
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b'Hello from CI/CD!' in response.data
+
+def test_health_endpoint():
+    client = app.test_client()
+    response = client.get('/health')
+    assert response.status_code == 200
+    assert b'healthy' in response.data
