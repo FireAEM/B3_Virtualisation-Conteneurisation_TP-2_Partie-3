@@ -1,0 +1,43 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/B3_Virtualisation-Conteneurisation_TP-2_Partie-3
+            git pull origin main
+            docker compose -f docker-compose.staging.yml pull
+            docker compose -f docker-compose.staging.yml up -d
+            docker compose -f docker-compose.staging.yml logs --tail=50
+
+      - name: Check deployment health
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.STAGING_HOST }}/health || exit 1
+
+      - name: Run integration tests
+        run: |
+          chmod +x tests/integration_test.sh
+          ./tests/integration_test.sh ${{ secrets.STAGING_HOST }}
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "Deployment successful to staging!"

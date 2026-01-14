@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/fireaem/b3_virtualisation-conteneurisation_tp-2_partie-3:main
+    ports:
+      - "5000:5000"
+    environment:
+      - ENVIRONMENT=staging
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-staging.conf:/etc/nginx/nginx.conf
+    depends_on:
+      app:
+        condition: service_healthy

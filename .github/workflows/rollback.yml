@@ -1,0 +1,44 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version to rollback to'
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Rollback deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/B3_Virtualisation-Conteneurisation_TP-2_Partie-3
+            docker compose down
+            docker pull ghcr.io/${{ github.repository_owner }}/b3_virtualisation-conteneurisation_tp-2_partie-3:${{ github.event.inputs.version }}
+            docker tag ghcr.io/${{ github.repository_owner }}/b3_virtualisation-conteneurisation_tp-2_partie-3:${{ github.event.inputs.version }} \ ghcr.io/${{ github.repository_owner }}/b3_virtualisation-conteneurisation_tp-2_partie-3:main
+            docker compose -f docker-compose.staging.yml up -d
+            docker compose -f docker-compose.staging.yml logs --tail=50
+
+      - name: Verify rollback
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.STAGING_HOST }}/health || exit 1
